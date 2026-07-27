@@ -423,7 +423,12 @@ The tree and your external target must share one react-dnd backend. Wrap both in
 
 ## react-dnd Compatibility
 
-react-arborist requires **react-dnd v16** and **Node.js ≥ 22**.
+react-arborist requires **react-dnd v16**.
+
+react-dnd v16 is ESM-only, so `require("react-arborist")` from CommonJS needs
+`require(esm)` — unflagged from **Node.js 22.12**, which is what `engines.node`
+declares. Bundler and browser consumers never take that path and are unaffected by
+the floor; if your build tool warns about it, the requirement is Node-only.
 
 ### Why react-dnd is a peer dependency
 
@@ -480,20 +485,24 @@ import { TouchBackend } from "react-dnd-touch-backend";
 
 Passing `dndBackend` or `dndManager` opts out of the default `HTML5Backend`.
 Custom-backend / `dndManager` users still need `react-dnd-html5-backend`
-installed as a peer (it's small and tree-shaken from the runtime bundle when
-unused).
+installed as a peer: the drag preview calls into it (`getEmptyImage()`) on every
+drag regardless of which backend is active, so it's a hard requirement rather
+than an optional default.
 
 ### react-dnd v16 and Jest
 
 react-dnd v16 and its transitive dependencies (`dnd-core`, `@react-dnd/*`) ship
 **ESM-only** builds. Jest's default CJS runtime can't load them directly. Add a
-`transformIgnorePatterns` entry so ts-jest (or babel-jest) transpiles them to CJS:
+`transformIgnorePatterns` entry so ts-jest (or babel-jest) transpiles them to CJS.
+Transpile-only mode is required — ts-jest's type-checking path won't emit for files
+outside your TS program (`transpilation` needs ts-jest ≥ 29.2; on older versions the
+option is spelled `isolatedModules`):
 
 ```js
 // jest.config.js
 module.exports = {
   transform: {
-    "^.+\\.[jt]sx?$": ["ts-jest", { isolatedModules: true, tsconfig: { allowJs: true } }],
+    "^.+\\.[jt]sx?$": ["ts-jest", { transpilation: true, tsconfig: { allowJs: true } }],
   },
   transformIgnorePatterns: [
     "/node_modules/(?!(react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd)/)",
@@ -504,7 +513,7 @@ module.exports = {
 };
 ```
 
-> **Why not `--experimental-vm-modules`?** Node 22+ supports `require()` of ESM
+> **Why not `--experimental-vm-modules`?** Node 22.12+ supports `require()` of ESM
 > modules natively at the runtime level, but Jest intercepts `require` with its own
 > CJS module system regardless of Node version. The `transformIgnorePatterns` approach
 > works on all Jest versions without experimental flags.

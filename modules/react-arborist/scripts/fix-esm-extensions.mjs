@@ -8,10 +8,12 @@
  * directory as ESM, so the build that ships under the `exports.import`
  * condition resolves under plain `node` / `nodenext`.
  */
-import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync, watch } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
-const distModule = resolve(process.argv[2]);
+const args = process.argv.slice(2);
+const watchMode = args.includes("--watch");
+const distModule = resolve(args.find((arg) => !arg.startsWith("--")));
 
 const SPECIFIER_RE = /((?:from|import)\s*\(?\s*["'])(\.\.?\/[^"']+)(["'])/g;
 
@@ -40,10 +42,37 @@ function fixFile(filePath) {
   if (changed) writeFileSync(filePath, fixed);
 }
 
-for (const entry of readdirSync(distModule, { recursive: true })) {
-  if (entry.endsWith(".js") || entry.endsWith(".d.ts")) {
-    fixFile(join(distModule, entry));
+function run() {
+  for (const entry of readdirSync(distModule, { recursive: true })) {
+    if (entry.endsWith(".js") || entry.endsWith(".d.ts")) {
+      fixFile(join(distModule, entry));
+    }
   }
+
+  // Bundlers stop at the nearest package.json, so this one has to restate
+  // `sideEffects` or it shadows the root manifest's and kills tree-shaking.
+  writeFileSync(
+    join(distModule, "package.json"),
+    JSON.stringify({ type: "module", sideEffects: false }, null, 2) + "\n",
+  );
 }
 
-writeFileSync(join(distModule, "package.json"), JSON.stringify({ type: "module" }, null, 2) + "\n");
+run();
+
+if (watchMode) {
+  // ponytail: debounced re-run of the whole (idempotent, ~50-file) pass rather
+  // than tracking which files tsc just touched. Narrow it if the dist grows.
+  let timer;
+  watch(distModule, { recursive: true }, (_event, filename) => {
+    if (!filename || !(filename.endsWith(".js") || filename.endsWith(".d.ts"))) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      try {
+        run();
+      } catch (error) {
+        // A partially emitted tsc batch can fail to resolve; the next pass fixes it.
+        console.error(`fix-esm-extensions: ${error.message}`);
+      }
+    }, 100);
+  });
+}

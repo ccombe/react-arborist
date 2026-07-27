@@ -37,8 +37,10 @@
       "import": {
         "types": "./dist/module/index.d.ts",
         "default": "./dist/module/index.js"
-      }
-    }
+      },
+      "default": "./dist/main/index.js"
+    },
+    "./package.json": "./package.json"
   },
   "scripts": {
     "build:cjs": "tsc --outDir dist/main",
@@ -47,7 +49,9 @@
     "clean": "rimraf dist",
     "prepack": "yarn build",
     "test": "jest",
-    "watch": "tsc --outDir dist/module --module esnext --moduleResolution bundler --watch"
+    "watch": "yarn build:es && npm-run-all -p watch:tsc watch:esm-extensions",
+    "watch:tsc": "tsc --outDir dist/module --module esnext --moduleResolution bundler --watch",
+    "watch:esm-extensions": "node scripts/fix-esm-extensions.mjs dist/module --watch"
   },
   "dependencies": {
     "react-window": "^1.8.11",
@@ -70,7 +74,7 @@
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18.2.0",
     "rimraf": "^5.0.5",
-    "ts-jest": "^29.1.1",
+    "ts-jest": "^29.4.0",
     "typescript": "^5.6.0"
   },
   "peerDependencies": {
@@ -80,6 +84,6 @@
     "react-dom": ">= 16.14"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   }
 }

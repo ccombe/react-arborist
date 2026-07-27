@@ -74,6 +74,7 @@ export default function VSCodeDemoPage() {
   return (
     <div className={styles.root}>
       <aside className={styles.sidebar} ref={ref}>
+        {/* Explicit backend on purpose: the other demos cover the default. */}
         <Tree
           dndBackend={HTML5Backend}
           data={data}

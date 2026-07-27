@@ -1,7 +1,6 @@
 import clsx from "clsx";
 import { useEffect, useState } from "react";
 import { NodeApi, NodeRendererProps, Tree, TreeApi } from "react-arborist";
-import { HTML5Backend } from "react-dnd-html5-backend";
 import styles from "../styles/cities.module.css";
 import { cities } from "../data/cities";
 import { BsMapFill, BsGeoFill } from "react-icons/bs";
@@ -36,7 +35,6 @@ export default function Cities() {
           <FillFlexParent>
             {(dimens) => (
               <Tree
-                dndBackend={HTML5Backend}
                 {...dimens}
                 initialData={data}
                 selectionFollowsFocus={followsFocus}

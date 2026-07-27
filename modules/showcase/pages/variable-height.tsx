@@ -1,5 +1,4 @@
 import { NodeApi, NodeRendererProps, Tree } from "react-arborist";
-import { HTML5Backend } from "react-dnd-html5-backend";
 import Link from "next/link";
 
 type Item = { id: string; name: string; children?: Item[] };
@@ -41,7 +40,6 @@ export default function VariableHeight() {
         automatically.
       </p>
       <Tree
-        dndBackend={HTML5Backend}
         initialData={data}
         openByDefault
         width={360}
