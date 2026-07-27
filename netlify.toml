@@ -12,5 +12,5 @@
 # root (leave it blank) so Netlify reads this netlify.toml.
 
 [build]
-  command = "yarn build-lib && yarn workspace showcase build"
-  publish = "modules/showcase/out"
+command = "yarn build-lib && yarn workspace showcase build"
+publish = "modules/showcase/out"
