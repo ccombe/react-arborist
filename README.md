@@ -495,14 +495,14 @@ react-dnd v16 and its transitive dependencies (`dnd-core`, `@react-dnd/*`) ship
 **ESM-only** builds. Jest's default CJS runtime can't load them directly. Add a
 `transformIgnorePatterns` entry so ts-jest (or babel-jest) transpiles them to CJS.
 Transpile-only mode is required — ts-jest's type-checking path won't emit for files
-outside your TS program (`transpilation` needs ts-jest ≥ 29.2; on older versions the
-option is spelled `isolatedModules`):
+outside your TS program. Set `isolatedModules: true` in the transformer's `tsconfig`
+block:
 
 ```js
 // jest.config.js
 module.exports = {
   transform: {
-    "^.+\\.[jt]sx?$": ["ts-jest", { transpilation: true, tsconfig: { allowJs: true } }],
+    "^.+\\.[jt]sx?$": ["ts-jest", { tsconfig: { allowJs: true, isolatedModules: true } }],
   },
   transformIgnorePatterns: [
     "/node_modules/(?!(react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd)/)",

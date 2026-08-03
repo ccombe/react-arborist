@@ -13,9 +13,18 @@ import { dirname, join, resolve } from "node:path";
 
 const args = process.argv.slice(2);
 const watchMode = args.includes("--watch");
-const distModule = resolve(args.find((arg) => !arg.startsWith("--")));
+const distModuleArg = args.find((arg) => !arg.startsWith("--"));
 
-const SPECIFIER_RE = /((?:from|import)\s*\(?\s*["'])(\.\.?\/[^"']+)(["'])/g;
+if (!distModuleArg) {
+  console.error("Usage: fix-esm-extensions.mjs <dist-module-dir> [--watch]");
+  process.exit(1);
+}
+
+const distModule = resolve(distModuleArg);
+
+// The trailing path is optional: tsc emits bare `import("..")` for type-position
+// imports of the package root, which needs the same rewrite.
+const SPECIFIER_RE = /((?:from|import)\s*\(?\s*["'])(\.\.?(?:\/[^"']+)?)(["'])/g;
 
 function resolveSpecifier(fileDir, specifier) {
   const target = resolve(fileDir, specifier);

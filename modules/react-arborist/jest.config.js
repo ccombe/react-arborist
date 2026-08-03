@@ -8,12 +8,12 @@ const config = {
   // via ts-jest (hence `allowJs`). (Node 22.12+ supports require(esm) natively,
   // but Jest uses its own module system independent of Node's native loader.)
   //
-  // `transpilation` is required, not just faster: ts-jest's type-checking path
+  // `isolatedModules` is required, not just faster: ts-jest's type-checking path
   // builds a TS program and won't emit for these out-of-program node_modules
   // files. Test files are still type-checked — tsc covers them during `yarn build`.
   preset: "ts-jest",
   transform: {
-    "^.+\\.[jt]sx?$": ["ts-jest", { transpilation: true, tsconfig: { allowJs: true } }],
+    "^.+\\.[jt]sx?$": ["ts-jest", { tsconfig: { allowJs: true, isolatedModules: true } }],
   },
   transformIgnorePatterns: [
     "/node_modules/(?!(react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd)/)",

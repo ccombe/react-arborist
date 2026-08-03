@@ -30,12 +30,14 @@ import { render, screen } from "@testing-library/react";
 import { DndProvider, useDragDropManager } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Tree } from "../components/tree";
+import { TreeProps } from "../types/tree-props";
 
 /* ------------------------------------------------------------------ */
 /* Shared fixtures                                                       */
 /* ------------------------------------------------------------------ */
 
 type Datum = { id: string; name: string; children?: Datum[] };
+type Manager = ReturnType<typeof useDragDropManager>;
 
 const data: Datum[] = [
   { id: "1", name: "Root" },
@@ -46,6 +48,51 @@ const data: Datum[] = [
 function Node({ node }: { node: { data: Datum } }) {
   return <span>{node.data.name}</span>;
 }
+
+/*
+ * react-dnd v16 memoises one manager per context object, and for the default
+ * `backend` path that object is the global — so every <Tree> in a single jsdom
+ * window shares a manager whether or not `dndManager` is threaded through.
+ * Giving the external provider its own `context` keeps its manager off the
+ * global slot, so identity assertions below fail if the prop is dropped.
+ * HTML5Backend can't run against a non-window context, hence the stub.
+ */
+const isolatedContext = {};
+const noop = () => {};
+const StubBackend: NonNullable<TreeProps<Datum>["dndBackend"]> = () => ({
+  setup: noop,
+  teardown: noop,
+  connectDragSource: () => noop,
+  connectDragPreview: () => noop,
+  connectDropTarget: () => noop,
+  profile: () => ({}),
+});
+
+/** Rendered inside each <Tree>, so it observes that tree's own manager. */
+const managersInsideTrees: Manager[] = [];
+function ProbeNode({ node }: { node: { data: Datum } }) {
+  managersInsideTrees.push(useDragDropManager());
+  return <span>{node.data.name}</span>;
+}
+
+let externalManager: Manager | undefined;
+function CaptureManager() {
+  externalManager = useDragDropManager();
+  return null;
+}
+
+function expectTreesUsedExternalManager() {
+  expect(managersInsideTrees.length).toBeGreaterThan(0);
+  // Counted rather than asserted per manager: `toBe` on a mismatch makes Jest
+  // deep-copy the whole manager/store graph to build a diff and run out of heap.
+  const foreign = managersInsideTrees.filter((manager) => manager !== externalManager);
+  expect(foreign.length).toBe(0);
+}
+
+beforeEach(() => {
+  managersInsideTrees.length = 0;
+  externalManager = undefined;
+});
 
 /* ------------------------------------------------------------------ */
 /* 1. Default path — HTML5Backend is auto-wired                         */
@@ -92,19 +139,21 @@ function SharedProviderSetup() {
   const manager = useDragDropManager();
   return (
     <Tree<Datum> data={data} rowHeight={24} dndManager={manager}>
-      {Node}
+      {ProbeNode}
     </Tree>
   );
 }
 
 test("renders correctly when dndManager from an external DndProvider is passed", () => {
   render(
-    <DndProvider backend={HTML5Backend}>
+    <DndProvider backend={StubBackend} context={isolatedContext}>
+      <CaptureManager />
       <SharedProviderSetup />
     </DndProvider>,
   );
   expect(screen.getByText("Root")).not.toBeNull();
   expect(screen.getByText("Child A")).not.toBeNull();
+  expectTreesUsedExternalManager();
 });
 
 /* ------------------------------------------------------------------ */
@@ -121,21 +170,22 @@ test("renders correctly when dndManager from an external DndProvider is passed",
  *
  * The fix: wrap sibling trees in a single shared DndProvider and pass its
  * manager to each tree via the `dndManager` prop.  This test verifies that
- * this pattern mounts both trees without errors and renders all nodes.
+ * both trees mount, render all nodes, and actually resolve to the external
+ * manager rather than standing up one of their own.
  */
 function SiblingTrees() {
   const manager = useDragDropManager();
   return (
     <>
       <Tree<Datum> data={data} rowHeight={24} dndManager={manager}>
-        {Node}
+        {ProbeNode}
       </Tree>
       <Tree<Datum>
         data={[{ id: "3", name: "Second Tree Node" }]}
         rowHeight={24}
         dndManager={manager}
       >
-        {Node}
+        {ProbeNode}
       </Tree>
     </>
   );
@@ -143,11 +193,13 @@ function SiblingTrees() {
 
 test("two sibling Trees sharing one DndProvider do not conflict (#319)", () => {
   render(
-    <DndProvider backend={HTML5Backend}>
+    <DndProvider backend={StubBackend} context={isolatedContext}>
+      <CaptureManager />
       <SiblingTrees />
     </DndProvider>,
   );
   expect(screen.getByText("Root")).not.toBeNull();
   expect(screen.getByText("Child A")).not.toBeNull();
   expect(screen.getByText("Second Tree Node")).not.toBeNull();
+  expectTreesUsedExternalManager();
 });
