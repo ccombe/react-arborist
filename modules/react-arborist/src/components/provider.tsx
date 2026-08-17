@@ -23,9 +23,8 @@ export function TreeProvider<T>({ treeProps, imperativeHandle, children }: Props
   const list = useRef<FixedSizeList | VariableSizeList | null>(null);
   const listEl = useRef<HTMLDivElement | null>(null);
   const store = useRef<Store<RootState, Actions>>(
-    // @ts-expect-error Redux 5 tightened createStore's PreloadedState generic;
-    // rootReducer is typed without it (v4-style). Migrate to configureStore to remove this.
-    createStore(rootReducer, initialState(treeProps)),
+    // @ts-expect-error Redux 5 tightened createStore's PreloadedState generic; rootReducer is typed without it (v4-style).
+    createStore(rootReducer, initialState(treeProps)), // Migrate to configureStore to remove this.
   );
   const state = useSyncExternalStore<RootState>(
     store.current.subscribe,

@@ -434,7 +434,7 @@ the floor; if your build tool warns about it, the requirement is Node-only.
 
 From react-arborist v4, `react-dnd` and `react-dnd-html5-backend` are **peer
 dependencies** rather than bundled dependencies. This matters because react-dnd
-registers a global singleton (`window[Symbol.for('__REACT_DND_CONTEXT_INSTANCE__')]`).
+registers a global singleton (`globalThis[Symbol.for('__REACT_DND_CONTEXT_INSTANCE__')]`).
 If your application and react-arborist each bundled their own copy, you would end up
 with two independent singletons, causing drag-and-drop to silently break or throw
 `"Cannot have two HTML5 backends at the same time"`.
@@ -444,8 +444,18 @@ shared copy for your entire application.
 
 ### Multiple trees on the same page
 
-If you render more than one `<Tree>` simultaneously, wrap them all in a single
-`<DndProvider>` and pass its manager to each tree:
+Rendering several `<Tree>` components side by side needs no special setup. react-dnd
+v16 memoizes one drag-drop manager per context object, and the default context is the
+global one, so every tree on the page already resolves to the same manager and the
+same backend.
+
+Reach for the shared-provider pattern when you need the tree bound to a *specific*
+manager rather than to whatever the global slot holds: your `<DndProvider>` passes a
+custom `context`, or renders into another window or iframe. It is also the way to make
+the binding explicit — because the global manager is memoized on first use, whichever
+provider mounts first fixes the backend for everything after it, and a `dndBackend`
+passed to a later `<Tree>` is silently ignored. Wrap everything in one `<DndProvider>`
+and pass its manager to each tree:
 
 ```tsx
 import { DndProvider, useDragDropManager } from "react-dnd";
@@ -470,8 +480,9 @@ function ForestView() {
 }
 ```
 
-Without the shared manager, each `<Tree>` would create its own `DndProvider` and
-attempt to register a second HTML5 backend on the same window.
+Without the shared manager each `<Tree>` resolves through the global context instead.
+If your provider is on a custom `context`, that is a different manager, and drags
+started in the tree are invisible to your drop targets.
 
 ### Custom backends
 
@@ -505,13 +516,25 @@ module.exports = {
     "^.+\\.[jt]sx?$": ["ts-jest", { tsconfig: { allowJs: true, isolatedModules: true } }],
   },
   transformIgnorePatterns: [
-    "/node_modules/(?!(react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd)/)",
+    "/node_modules/(?!.*(react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd)/)",
   ],
   testEnvironmentOptions: {
-    customExportConditions: ["node", "require", "default"],
+    customExportConditions: ["browser", "node", "require", "default"],
   },
 };
 ```
+
+Two details in that config are easy to get wrong:
+
+- The lookahead scans the rest of the path (`.*`) instead of just the next segment.
+  Under pnpm these packages live at
+  `node_modules/.pnpm/react-dnd@16.0.1_.../node_modules/react-dnd/...`; a
+  next-segment-only pattern sees `.pnpm`, excludes them from transformation, and you
+  get back the exact `SyntaxError` this is meant to prevent.
+- `customExportConditions` **replaces** the test environment's conditions rather than
+  adding to them, so `"browser"` has to be restated. Drop it and every dependency with
+  a browser build resolves its Node build under jsdom — your tests keep passing while
+  exercising code that never ships.
 
 > **Why not `--experimental-vm-modules`?** Node 22.12+ supports `require()` of ESM
 > modules natively at the runtime level, but Jest intercepts `require` with its own
@@ -530,8 +553,8 @@ npm install react-arborist
 npm install react-arborist react-dnd react-dnd-html5-backend
 ```
 
-If you render multiple trees or already use react-dnd elsewhere in your app, adopt
-the shared `DndProvider` + `dndManager` pattern shown above.
+If your app puts its `<DndProvider>` on a custom `context`, or renders one into
+another window, adopt the shared `DndProvider` + `dndManager` pattern shown above.
 
 ## Row Component Props
 

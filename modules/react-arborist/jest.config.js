@@ -15,17 +15,24 @@ const config = {
   transform: {
     "^.+\\.[jt]sx?$": ["ts-jest", { tsconfig: { allowJs: true, isolatedModules: true } }],
   },
+  // The lookahead scans the whole remaining path (`.*`) rather than just the
+  // next segment: under pnpm these live at
+  // `node_modules/.pnpm/react-dnd@16.0.1_.../node_modules/react-dnd/...`, so a
+  // next-segment-only pattern sees `.pnpm` and excludes them from transform.
   transformIgnorePatterns: [
-    "/node_modules/(?!(react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd)/)",
+    "/node_modules/(?!.*(react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd)/)",
   ],
 
   rootDir: "./src",
   testEnvironment: "jsdom",
 
-  // "node" preserves Jest's standard Node.js resolution as the baseline;
-  // "require" selects CJS builds for packages with dual exports maps.
+  // "require" selects CJS builds for packages with dual exports maps, and
+  // "node" keeps Jest's standard Node.js resolution as the baseline. This list
+  // *replaces* the environment's own conditions, so "browser" has to be
+  // restated — dropping it would make dependencies that ship a browser build
+  // resolve their Node one under jsdom.
   testEnvironmentOptions: {
-    customExportConditions: ["node", "require", "default"],
+    customExportConditions: ["browser", "node", "require", "default"],
   },
 };
 

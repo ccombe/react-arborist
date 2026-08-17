@@ -22,8 +22,8 @@
  *   2. A custom `dndBackend` prop is wired through correctly.
  *   3. A shared external DndProvider + `dndManager` prop works (the pattern
  *      required when react-arborist sits alongside other react-dnd consumers).
- *   4. Two sibling <Tree> instances sharing one external DndProvider do not
- *      conflict — regression guard for #319.
+ *   4. Two sibling <Tree> instances both resolve to one external DndProvider's
+ *      manager — regression guard for #319.
  */
 
 import { render, screen } from "@testing-library/react";
@@ -131,9 +131,9 @@ test("accepts a custom dndBackend and still renders tree nodes", () => {
  * react-dnd consumers in the same application.  One DndProvider owns the
  * backend; its manager is passed to the tree so both share the same context.
  *
- * Without this pattern (old bundled-dep behaviour), the tree's internal
- * DndProvider would initialise a second, independent backend — causing the
- * singleton conflict described in issue #319.
+ * Without it, the tree resolves through the global context instead — a
+ * different manager whenever the provider carries its own `context`, which is
+ * how this file forces the distinction to be observable.
  */
 function SharedProviderSetup() {
   const manager = useDragDropManager();
@@ -163,15 +163,16 @@ test("renders correctly when dndManager from an external DndProvider is passed",
 /**
  * Regression test for GitHub issue #319.
  *
- * Before v4, mounting two <Tree> components in the same window caused a
- * react-dnd HTML5Backend singleton conflict: each Tree created its own
- * DndProvider which attempted to register a second HTML5Backend on the
- * same window object.
+ * Before v4, react-arborist bundled its own copy of react-dnd, so the host's
+ * DndProvider and the tree's internal one initialised *different* global
+ * singletons — the two-copies problem described at the top of this file.
  *
- * The fix: wrap sibling trees in a single shared DndProvider and pass its
- * manager to each tree via the `dndManager` prop.  This test verifies that
- * both trees mount, render all nodes, and actually resolve to the external
- * manager rather than standing up one of their own.
+ * Note what this does and does not cover.  As the fixture comment above
+ * explains, sibling trees on the default (global) context already share one
+ * manager and one backend, so #319 cannot recur through that path.  What is
+ * still worth guarding is the explicit binding: with the provider on its own
+ * `context`, both trees have to resolve to *its* manager, which only happens
+ * if `dndManager` is honoured.
  */
 function SiblingTrees() {
   const manager = useDragDropManager();

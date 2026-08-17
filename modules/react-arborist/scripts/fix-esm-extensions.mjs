@@ -10,6 +10,7 @@
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync, watch } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import ts from "typescript";
 
 const args = process.argv.slice(2);
 const watchMode = args.includes("--watch");
@@ -22,9 +23,45 @@ if (!distModuleArg) {
 
 const distModule = resolve(distModuleArg);
 
-// The trailing path is optional: tsc emits bare `import("..")` for type-position
-// imports of the package root, which needs the same rewrite.
-const SPECIFIER_RE = /((?:from|import)\s*\(?\s*["'])(\.\.?(?:\/[^"']+)?)(["'])/g;
+/*
+ * Specifiers are located by parsing, not by matching text: a relative import
+ * inside a JSDoc example or a string literal survives into the emit, and a
+ * text scan would rewrite it (or, if it names something that doesn't exist,
+ * fail the build over a comment). tsc is already a prerequisite of this step,
+ * so its parser costs nothing extra.
+ */
+function collectSpecifiers(sourceFile) {
+  const specifiers = [];
+
+  const visit = (node) => {
+    if (
+      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+      node.moduleSpecifier &&
+      ts.isStringLiteral(node.moduleSpecifier)
+    ) {
+      specifiers.push(node.moduleSpecifier);
+    } else if (
+      // `import("...").Foo` in type position — how tsc emits type-only imports
+      // into the .d.ts, including the bare `import("..")` of the package root.
+      ts.isImportTypeNode(node) &&
+      ts.isLiteralTypeNode(node.argument) &&
+      ts.isStringLiteral(node.argument.literal)
+    ) {
+      specifiers.push(node.argument.literal);
+    } else if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      node.arguments.length > 0 &&
+      ts.isStringLiteral(node.arguments[0])
+    ) {
+      specifiers.push(node.arguments[0]);
+    }
+    ts.forEachChild(node, visit);
+  };
+
+  ts.forEachChild(sourceFile, visit);
+  return specifiers;
+}
 
 function resolveSpecifier(fileDir, specifier) {
   const target = resolve(fileDir, specifier);
@@ -39,16 +76,30 @@ function resolveSpecifier(fileDir, specifier) {
 
 function fixFile(filePath) {
   const original = readFileSync(filePath, "utf8");
+  const sourceFile = ts.createSourceFile(filePath, original, ts.ScriptTarget.Latest, false);
   const fileDir = dirname(filePath);
-  let changed = false;
 
-  const fixed = original.replace(SPECIFIER_RE, (match, prefix, specifier, suffix) => {
-    if (/\.[cm]?js$|\.json$/.test(specifier)) return match;
-    changed = true;
-    return `${prefix}${resolveSpecifier(fileDir, specifier)}${suffix}`;
-  });
+  const edits = [];
+  for (const node of collectSpecifiers(sourceFile)) {
+    const specifier = node.text;
+    if (!specifier.startsWith(".")) continue;
+    if (/\.[cm]?js$|\.json$/.test(specifier)) continue;
+    const quote = original[node.end - 1];
+    edits.push({
+      start: node.getStart(sourceFile),
+      end: node.end,
+      text: `${quote}${resolveSpecifier(fileDir, specifier)}${quote}`,
+    });
+  }
 
-  if (changed) writeFileSync(filePath, fixed);
+  if (edits.length === 0) return;
+
+  // Back to front, so earlier offsets stay valid.
+  let fixed = original;
+  for (const edit of edits.reverse()) {
+    fixed = fixed.slice(0, edit.start) + edit.text + fixed.slice(edit.end);
+  }
+  writeFileSync(filePath, fixed);
 }
 
 function run() {
@@ -72,7 +123,7 @@ if (watchMode) {
   // ponytail: debounced re-run of the whole (idempotent, ~50-file) pass rather
   // than tracking which files tsc just touched. Narrow it if the dist grows.
   let timer;
-  watch(distModule, { recursive: true }, (_event, filename) => {
+  const onChange = (_event, filename) => {
     if (!filename || !(filename.endsWith(".js") || filename.endsWith(".d.ts"))) return;
     clearTimeout(timer);
     timer = setTimeout(() => {
@@ -83,5 +134,13 @@ if (watchMode) {
         console.error(`fix-esm-extensions: ${error.message}`);
       }
     }, 100);
-  });
+  };
+
+  try {
+    watch(distModule, { recursive: true }, onChange);
+  } catch {
+    // `recursive` is unsupported on some platforms (notably Linux).
+    console.warn("fix-esm-extensions: recursive watch unavailable; watching top-level only");
+    watch(distModule, onChange);
+  }
 }

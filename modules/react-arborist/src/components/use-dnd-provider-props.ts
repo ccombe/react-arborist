@@ -5,13 +5,13 @@ export type DndProviderProps =
   | { manager: NonNullable<TreeProps<unknown>["dndManager"]> }
   | {
       backend: NonNullable<TreeProps<unknown>["dndBackend"]> | typeof HTML5Backend;
-      options: { rootElement: Node | undefined };
+      options: { rootElement: globalThis.Node | undefined };
     };
 
 /** Resolves the props to spread onto react-dnd's <DndProvider>. */
 export function useDndProviderProps<T>(
   treeProps: TreeProps<T>,
-  dndRootElement: Node | undefined,
+  dndRootElement: globalThis.Node | undefined,
 ): DndProviderProps {
   if (treeProps.dndManager) return { manager: treeProps.dndManager };
   return {
