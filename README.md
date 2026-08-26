@@ -427,8 +427,12 @@ react-arborist requires **react-dnd v16**.
 
 react-dnd v16 is ESM-only, so `require("react-arborist")` from CommonJS needs
 `require(esm)` — unflagged from **Node.js 22.12**, which is what `engines.node`
-declares. Bundler and browser consumers never take that path and are unaffected by
-the floor; if your build tool warns about it, the requirement is Node-only.
+declares. Only the `require` path actually needs that Node version, but `engines` is
+checked at install time: package managers that enforce it (Yarn Classic by default,
+pnpm with `engine-strict`) will refuse to install on older Node even for bundler and
+browser consumers. CommonJS consumers on `module: "node16"` or `"nodenext"` with
+`skipLibCheck: false` also need **TypeScript ≥ 5.8**, which taught `nodenext` about
+`require(esm)` of the now-ESM-only `react-dnd` types.
 
 ### Why react-dnd is a peer dependency
 
@@ -532,9 +536,11 @@ Two details in that config are easy to get wrong:
   next-segment-only pattern sees `.pnpm`, excludes them from transformation, and you
   get back the exact `SyntaxError` this is meant to prevent.
 - `customExportConditions` **replaces** the test environment's conditions rather than
-  adding to them, so `"browser"` has to be restated. Drop it and every dependency with
-  a browser build resolves its Node build under jsdom — your tests keep passing while
-  exercising code that never ships.
+  adding to them, so `"browser"` has to be restated — without it, a dependency whose
+  exports map lists `"browser"` before `"node"` resolves its Node build under jsdom,
+  and your tests pass while exercising code that never ships. Precedence still comes
+  from each dependency's own key order, so this list can't force a browser build on a
+  package that lists `"node"` first — drop `"node"` from the list if you need that.
 
 > **Why not `--experimental-vm-modules`?** Node 22.12+ supports `require()` of ESM
 > modules natively at the runtime level, but Jest intercepts `require` with its own

@@ -117,7 +117,16 @@ function run() {
   );
 }
 
-run();
+try {
+  run();
+} catch (error) {
+  // watch:tsc and watch:esm-extensions start in parallel, so this first pass is
+  // exposed to the same partial-emit race as the debounced one below — let that
+  // pass recover instead of taking the session down. A one-shot build has no
+  // next pass, so there the failure stays fatal.
+  if (!watchMode) throw error;
+  console.error(`fix-esm-extensions: ${error.message}`);
+}
 
 if (watchMode) {
   // ponytail: debounced re-run of the whole (idempotent, ~50-file) pass rather

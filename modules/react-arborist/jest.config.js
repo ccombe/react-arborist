@@ -26,11 +26,13 @@ const config = {
   rootDir: "./src",
   testEnvironment: "jsdom",
 
-  // "require" selects CJS builds for packages with dual exports maps, and
-  // "node" keeps Jest's standard Node.js resolution as the baseline. This list
-  // *replaces* the environment's own conditions, so "browser" has to be
-  // restated — dropping it would make dependencies that ship a browser build
-  // resolve their Node one under jsdom.
+  // Only consulted for dependencies that ship an `exports` map — nothing in this
+  // tree does today, so this mainly keeps the config aligned with the recipe the
+  // README publishes. "require" picks CJS builds, "node" is Jest's baseline, and
+  // "browser" is restated because this list *replaces* jsdom's default rather than
+  // extending it: without it, a package whose exports list "browser" before "node"
+  // resolves its Node build. Precedence still comes from each dependency's own key
+  // order, so a package listing "node" first resolves Node either way.
   testEnvironmentOptions: {
     customExportConditions: ["browser", "node", "require", "default"],
   },
