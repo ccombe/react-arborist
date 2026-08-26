@@ -8,7 +8,14 @@
  * directory as ESM, so the build that ships under the `exports.import`
  * condition resolves under plain `node` / `nodenext`.
  */
-import { readFileSync, writeFileSync, existsSync, readdirSync, watch } from "node:fs";
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  readdirSync,
+  statSync,
+  watch,
+} from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import ts from "typescript";
 
@@ -128,12 +135,55 @@ try {
   console.error(`fix-esm-extensions: ${error.message}`);
 }
 
+function isDir(path) {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+// Linux `fs.watch` has no recursive option. Walk existing dirs and attach a
+// watcher to each; attach again when tsc creates a nested folder mid-session.
+function watchNestedDirs(root, onFileChange, onNewDir) {
+  const watched = new Set();
+
+  const attach = (dir) => {
+    if (watched.has(dir)) return;
+    watched.add(dir);
+    watch(dir, (event, filename) => {
+      if (filename) {
+        const child = join(dir, filename);
+        if (isDir(child)) {
+          attach(child);
+          onNewDir();
+        }
+      }
+      onFileChange(event, filename);
+    });
+  };
+
+  const walk = (dir) => {
+    attach(dir);
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.isDirectory()) walk(join(dir, entry.name));
+    }
+  };
+
+  walk(root);
+}
+
 if (watchMode) {
   // ponytail: debounced re-run of the whole (idempotent, ~50-file) pass rather
   // than tracking which files tsc just touched. Narrow it if the dist grows.
   let timer;
-  const onChange = (_event, filename) => {
-    if (!filename || !(filename.endsWith(".js") || filename.endsWith(".d.ts"))) return;
+  const scheduleRun = () => {
     clearTimeout(timer);
     timer = setTimeout(() => {
       try {
@@ -144,12 +194,17 @@ if (watchMode) {
       }
     }, 100);
   };
+  const onChange = (_event, filename) => {
+    if (!filename || !(filename.endsWith(".js") || filename.endsWith(".d.ts"))) return;
+    scheduleRun();
+  };
 
   try {
     watch(distModule, { recursive: true }, onChange);
   } catch {
-    // `recursive` is unsupported on some platforms (notably Linux).
-    console.warn("fix-esm-extensions: recursive watch unavailable; watching top-level only");
-    watch(distModule, onChange);
+    console.warn(
+      "fix-esm-extensions: recursive watch unavailable; watching nested directories",
+    );
+    watchNestedDirs(distModule, onChange, scheduleRun);
   }
 }
