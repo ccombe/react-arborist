@@ -1,7 +1,7 @@
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { TreeProps } from "../types/tree-props";
 
-export type DndProviderProps =
+type DndProviderProps =
   | { manager: NonNullable<TreeProps<unknown>["dndManager"]> }
   | {
       backend: NonNullable<TreeProps<unknown>["dndBackend"]> | typeof HTML5Backend;

@@ -8,14 +8,7 @@
  * directory as ESM, so the build that ships under the `exports.import`
  * condition resolves under plain `node` / `nodenext`.
  */
-import {
-  readFileSync,
-  writeFileSync,
-  existsSync,
-  readdirSync,
-  statSync,
-  watch,
-} from "node:fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, watch } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import ts from "typescript";
 
@@ -202,9 +195,7 @@ if (watchMode) {
   try {
     watch(distModule, { recursive: true }, onChange);
   } catch {
-    console.warn(
-      "fix-esm-extensions: recursive watch unavailable; watching nested directories",
-    );
+    console.warn("fix-esm-extensions: recursive watch unavailable; watching nested directories");
     watchNestedDirs(distModule, onChange, scheduleRun);
   }
 }
