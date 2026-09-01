@@ -9,7 +9,7 @@ import { initialState } from "../state/initial";
 import { Actions, rootReducer, RootState } from "../state/root-reducer";
 import { actions as visibility } from "../state/open-slice";
 import { TreeProps } from "../types/tree-props";
-import { useDndProviderProps } from "./use-dnd-provider-props";
+import { getDndProviderProps } from "./get-dnd-provider-props";
 
 type Props<T> = {
   treeProps: TreeProps<T>;
@@ -71,7 +71,7 @@ export function TreeProvider<T>({ treeProps, imperativeHandle, children }: Props
     }
   }, [api.props.searchTerm]);
 
-  const dndProps = useDndProviderProps(treeProps, api.props.dndRootElement ?? undefined);
+  const dndProps = getDndProviderProps(treeProps, api.props.dndRootElement ?? undefined);
 
   return (
     <TreeApiContext.Provider value={api}>

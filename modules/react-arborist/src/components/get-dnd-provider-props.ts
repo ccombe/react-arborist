@@ -9,7 +9,7 @@ type DndProviderProps =
     };
 
 /** Resolves the props to spread onto react-dnd's <DndProvider>. */
-export function useDndProviderProps<T>(
+export function getDndProviderProps<T>(
   treeProps: TreeProps<T>,
   dndRootElement: globalThis.Node | undefined,
 ): DndProviderProps {
