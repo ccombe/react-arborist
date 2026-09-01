@@ -523,7 +523,7 @@ module.exports = {
     "/node_modules/(?!.*(react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd)/)",
   ],
   testEnvironmentOptions: {
-    customExportConditions: ["browser", "node", "require", "default"],
+    customExportConditions: ["browser", "require", "default"],
   },
 };
 ```
@@ -538,9 +538,9 @@ Two details in that config are easy to get wrong:
 - `customExportConditions` **replaces** the test environment's conditions rather than
   adding to them, so `"browser"` has to be restated — without it, a dependency whose
   exports map lists `"browser"` before `"node"` resolves its Node build under jsdom,
-  and your tests pass while exercising code that never ships. Precedence still comes
-  from each dependency's own key order, so this list can't force a browser build on a
-  package that lists `"node"` first — drop `"node"` from the list if you need that.
+  and your tests pass while exercising code that never ships. Do not add `"node"`:
+  `exports` maps match in the package's own key order, so including `"node"` makes a
+  package that lists `"node"` first resolve its Node build.
 
 > **Why not `--experimental-vm-modules`?** Node 22.12+ supports `require()` of ESM
 > modules natively at the runtime level, but Jest intercepts `require` with its own

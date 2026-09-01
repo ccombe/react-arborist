@@ -8,8 +8,16 @@
  * directory as ESM, so the build that ships under the `exports.import`
  * condition resolves under plain `node` / `nodenext`.
  */
-import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, watch } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  statSync,
+  watch,
+} from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import ts from "typescript";
 
 const args = process.argv.slice(2);
@@ -117,6 +125,8 @@ function run() {
   );
 }
 
+if (watchMode && !existsSync(distModule)) mkdirSync(distModule, { recursive: true });
+
 try {
   run();
 } catch (error) {
@@ -136,15 +146,30 @@ function isDir(path) {
   }
 }
 
+function isRecursiveWatchUnsupported(error) {
+  return error?.code === "ERR_FEATURE_UNAVAILABLE_ON_PLATFORM" || error?.code === "ENOSYS";
+}
+
+function closeWatcher(watcher) {
+  try {
+    watcher?.close();
+  } catch {
+    // already closed
+  }
+}
+
+function ensureWatchRoot() {
+  if (!existsSync(distModule)) mkdirSync(distModule, { recursive: true });
+}
+
 // Linux `fs.watch` has no recursive option. Walk existing dirs and attach a
 // watcher to each; attach again when tsc creates a nested folder mid-session.
 function watchNestedDirs(root, onFileChange, onNewDir) {
-  const watched = new Set();
+  const watched = new Map();
 
   const attach = (dir) => {
     if (watched.has(dir)) return;
-    watched.add(dir);
-    watch(dir, (event, filename) => {
+    const watcher = watch(dir, (event, filename) => {
       if (filename) {
         const child = join(dir, filename);
         if (isDir(child)) {
@@ -154,6 +179,11 @@ function watchNestedDirs(root, onFileChange, onNewDir) {
       }
       onFileChange(event, filename);
     });
+    watcher.on("error", (error) => {
+      console.error(`fix-esm-extensions: ${error.message}`);
+      watched.delete(dir);
+    });
+    watched.set(dir, watcher);
   };
 
   const walk = (dir) => {
@@ -170,6 +200,11 @@ function watchNestedDirs(root, onFileChange, onNewDir) {
   };
 
   walk(root);
+
+  return () => {
+    for (const watcher of watched.values()) closeWatcher(watcher);
+    watched.clear();
+  };
 }
 
 if (watchMode) {
@@ -192,10 +227,50 @@ if (watchMode) {
     scheduleRun();
   };
 
-  try {
-    watch(distModule, { recursive: true }, onChange);
-  } catch {
-    console.warn("fix-esm-extensions: recursive watch unavailable; watching nested directories");
-    watchNestedDirs(distModule, onChange, scheduleRun);
-  }
+  let stopInner = () => {};
+  let parentWatcher;
+
+  const startInner = () => {
+    stopInner();
+    ensureWatchRoot();
+    try {
+      const watcher = watch(distModule, { recursive: true }, onChange);
+      watcher.on("error", (error) => {
+        console.error(`fix-esm-extensions: ${error.message}`);
+        setTimeout(startInner, 100);
+      });
+      stopInner = () => closeWatcher(watcher);
+    } catch (error) {
+      if (!isRecursiveWatchUnsupported(error)) throw error;
+      console.warn("fix-esm-extensions: recursive watch unavailable; watching nested directories");
+      stopInner = watchNestedDirs(distModule, onChange, scheduleRun);
+    }
+  };
+
+  // macOS recursive watch goes inert (no error) if the root is rm -rf'd.
+  // Watch the parent so a delete/recreate re-attaches and the next tsc emit is fixed.
+  const startParent = () => {
+    closeWatcher(parentWatcher);
+    ensureWatchRoot();
+    const rootName = basename(distModule);
+    parentWatcher = watch(dirname(distModule), (_event, filename) => {
+      if (filename !== rootName) return;
+      if (existsSync(distModule)) {
+        startInner();
+        scheduleRun();
+      } else {
+        console.error("fix-esm-extensions: watch root disappeared; waiting for it to return");
+      }
+    });
+    parentWatcher.on("error", (error) => {
+      console.error(`fix-esm-extensions: ${error.message}`);
+      setTimeout(() => {
+        startParent();
+        startInner();
+      }, 100);
+    });
+  };
+
+  startParent();
+  startInner();
 }

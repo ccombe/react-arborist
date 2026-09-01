@@ -28,13 +28,13 @@ const config = {
 
   // Only consulted for dependencies that ship an `exports` map — nothing in this
   // tree does today, so this mainly keeps the config aligned with the recipe the
-  // README publishes. "require" picks CJS builds, "node" is Jest's baseline, and
-  // "browser" is restated because this list *replaces* jsdom's default rather than
-  // extending it: without it, a package whose exports list "browser" before "node"
-  // resolves its Node build. Precedence still comes from each dependency's own key
-  // order, so a package listing "node" first resolves Node either way.
+  // README publishes. "require" picks CJS builds. "browser" is restated because
+  // this list *replaces* jsdom's default rather than extending it. Do not add
+  // "node": package `exports` maps match in the package's own key order, so
+  // including "node" makes a package that lists "node" before "browser" resolve
+  // its Node build under jsdom.
   testEnvironmentOptions: {
-    customExportConditions: ["browser", "node", "require", "default"],
+    customExportConditions: ["browser", "require", "default"],
   },
 };
 
