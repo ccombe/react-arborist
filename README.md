@@ -522,13 +522,22 @@ module.exports = {
   transformIgnorePatterns: [
     "/node_modules/(?!.*(react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd)/)",
   ],
+  testEnvironment: "jsdom",
   testEnvironmentOptions: {
     customExportConditions: ["browser", "require", "default"],
   },
 };
 ```
 
-Two details in that config are easy to get wrong:
+Three details in that config are easy to get wrong:
+
+- `testEnvironment: "jsdom"` is required, not optional, once you restate
+  `customExportConditions`. Jest's default environment is `jest-environment-node`,
+  whose own conditions are `["node"]` — and `customExportConditions` *replaces*
+  rather than extends them. Drop `jsdom` while keeping `["browser", "require",
+  "default"]` and every dual-build dependency (`axios`, for example) resolves its
+  **browser** build under Node instead, failing with errors like
+  `XMLHttpRequest is not defined`.
 
 - The lookahead scans the rest of the path (`.*`) instead of just the next segment.
   Under pnpm these packages live at
