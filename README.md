@@ -511,7 +511,11 @@ react-dnd v16 and its transitive dependencies (`dnd-core`, `@react-dnd/*`) ship
 `transformIgnorePatterns` entry so ts-jest (or babel-jest) transpiles them to CJS.
 Transpile-only mode is required — ts-jest's type-checking path won't emit for files
 outside your TS program. Set `isolatedModules: true` in the transformer's `tsconfig`
-block:
+block. Jest stopped bundling `jest-environment-jsdom` in v28, so install it too:
+
+```
+yarn add -D jest-environment-jsdom
+```
 
 ```js
 // jest.config.js
@@ -535,9 +539,10 @@ Three details in that config are easy to get wrong:
   `customExportConditions`. Jest's default environment is `jest-environment-node`,
   whose own conditions are `["node"]` — and `customExportConditions` *replaces*
   rather than extends them. Drop `jsdom` while keeping `["browser", "require",
-  "default"]` and every dual-build dependency (`axios`, for example) resolves its
-  **browser** build under Node instead, failing with errors like
-  `XMLHttpRequest is not defined`.
+  "default"]` and a dependency with no Node fallback (`ws`, for example) resolves
+  its **browser** build instead, failing with
+  `ws does not work in the browser. Browser clients must use the native WebSocket
+  object`.
 
 - The lookahead scans the rest of the path (`.*`) instead of just the next segment.
   Under pnpm these packages live at

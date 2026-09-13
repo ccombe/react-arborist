@@ -235,23 +235,35 @@ if (watchMode) {
 
   const startInner = () => {
     stopInner();
-    ensureWatchRoot();
     try {
+      ensureWatchRoot();
       const watcher = watch(distModule, { recursive: true }, onChange);
-      innerRetryDelay = 100;
+      // Only count this attempt as recovered once it has stayed up a beat —
+      // resetting on construction meant a watcher that errors right after
+      // being built never actually backed off (retry was always 100ms).
+      const survived = setTimeout(() => {
+        innerRetryDelay = 100;
+      }, 2000);
       watcher.on("error", (error) => {
+        clearTimeout(survived);
         console.error(`fix-esm-extensions: ${error.message}`);
         setTimeout(startInner, innerRetryDelay);
         innerRetryDelay = Math.min(innerRetryDelay * 2, maxInnerRetryDelay);
       });
-      stopInner = () => closeWatcher(watcher);
+      stopInner = () => {
+        clearTimeout(survived);
+        closeWatcher(watcher);
+      };
     } catch (error) {
       if (!isRecursiveWatchUnsupported(error)) {
         // Called from fs.watch event callbacks below; rethrowing here would be
         // an uncaught exception that kills watch:esm-extensions while
         // npm-run-all keeps watch:tsc emitting, the exact silent-bad-output
-        // case the error listeners exist to prevent.
+        // case the error listeners exist to prevent. Retry instead of leaving
+        // the watcher permanently dead.
         console.error(`fix-esm-extensions: ${error.message}`);
+        setTimeout(startInner, innerRetryDelay);
+        innerRetryDelay = Math.min(innerRetryDelay * 2, maxInnerRetryDelay);
         return;
       }
       console.warn("fix-esm-extensions: recursive watch unavailable; watching nested directories");
@@ -263,24 +275,29 @@ if (watchMode) {
   // Watch the parent so a delete/recreate re-attaches and the next tsc emit is fixed.
   const startParent = () => {
     closeWatcher(parentWatcher);
-    ensureWatchRoot();
-    const rootName = basename(distModule);
-    parentWatcher = watch(dirname(distModule), (_event, filename) => {
-      if (filename !== rootName) return;
-      if (existsSync(distModule)) {
-        startInner();
-        scheduleRun();
-      } else {
-        console.error("fix-esm-extensions: watch root disappeared; waiting for it to return");
-      }
-    });
-    parentWatcher.on("error", (error) => {
+    try {
+      ensureWatchRoot();
+      const rootName = basename(distModule);
+      parentWatcher = watch(dirname(distModule), (_event, filename) => {
+        if (filename !== rootName) return;
+        if (existsSync(distModule)) {
+          startInner();
+          scheduleRun();
+        } else {
+          console.error("fix-esm-extensions: watch root disappeared; waiting for it to return");
+        }
+      });
+      parentWatcher.on("error", (error) => {
+        console.error(`fix-esm-extensions: ${error.message}`);
+        setTimeout(() => {
+          startParent();
+          startInner();
+        }, 100);
+      });
+    } catch (error) {
       console.error(`fix-esm-extensions: ${error.message}`);
-      setTimeout(() => {
-        startParent();
-        startInner();
-      }, 100);
-    });
+      setTimeout(startParent, 100);
+    }
   };
 
   // `startParent` watches dist/module's parent (e.g. `dist`) — but this
@@ -290,21 +307,31 @@ if (watchMode) {
   // does.
   const startGrandparent = () => {
     closeWatcher(grandparentWatcher);
-    const parent = dirname(distModule);
-    const parentName = basename(parent);
-    grandparentWatcher = watch(dirname(parent), (_event, filename) => {
-      if (filename !== parentName) return;
-      if (existsSync(parent)) {
-        startParent();
-        startInner();
-      } else {
-        console.error("fix-esm-extensions: dist directory disappeared; waiting for it to return");
-      }
-    });
-    grandparentWatcher.on("error", (error) => {
+    try {
+      const parent = dirname(distModule);
+      const parentName = basename(parent);
+      grandparentWatcher = watch(dirname(parent), (_event, filename) => {
+        if (filename !== parentName) return;
+        if (existsSync(parent)) {
+          startParent();
+          startInner();
+          scheduleRun();
+        } else {
+          console.error("fix-esm-extensions: dist directory disappeared; waiting for it to return");
+        }
+      });
+      grandparentWatcher.on("error", (error) => {
+        console.error(`fix-esm-extensions: ${error.message}`);
+        setTimeout(() => {
+          startGrandparent();
+          startParent();
+          startInner();
+        }, 100);
+      });
+    } catch (error) {
       console.error(`fix-esm-extensions: ${error.message}`);
       setTimeout(startGrandparent, 100);
-    });
+    }
   };
 
   startGrandparent();

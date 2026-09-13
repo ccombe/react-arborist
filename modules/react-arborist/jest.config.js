@@ -26,14 +26,13 @@ const config = {
   rootDir: "./src",
   testEnvironment: "jsdom",
 
-  // Only consulted for dependencies that ship an `exports` map with "node"/"browser"
-  // conditions — several in this tree do (react-dom, axios, uuid, nanoid, rxjs, ws,
-  // among others), so this is load-bearing, not just aligned with the README recipe.
-  // "require" picks CJS builds. "browser" is restated because this list *replaces*
-  // jsdom's default rather than extending it. Do not add "node": package `exports`
-  // maps match in the package's own key order, so including "node" makes a package
-  // that lists "node" before "browser" (e.g. uuid, pinned via a root `resolutions`
-  // entry) resolve its Node build under jsdom.
+  // Kept aligned with the README's copy-pasteable recipe, and as a guard for
+  // whatever dependency shows up next with a "node"/"browser"-conditional
+  // `exports` map. "require" picks CJS builds. "browser" is restated because
+  // this list *replaces* jsdom's default rather than extending it. Do not add
+  // "node": package `exports` maps match in the package's own key order, so a
+  // future dependency that lists "node" before "browser" would resolve its
+  // Node build under jsdom.
   testEnvironmentOptions: {
     customExportConditions: ["browser", "require", "default"],
   },
