@@ -539,10 +539,10 @@ Three details in that config are easy to get wrong:
   `customExportConditions`. Jest's default environment is `jest-environment-node`,
   whose own conditions are `["node"]` — and `customExportConditions` *replaces*
   rather than extends them. Drop `jsdom` while keeping `["browser", "require",
-  "default"]` and a dependency with no Node fallback (`ws`, for example) resolves
-  its **browser** build instead, failing with
-  `ws does not work in the browser. Browser clients must use the native WebSocket
-  object`.
+  "default"]` and dependencies still resolve their **browser** builds, but now run
+  them in plain Node without the DOM globals those builds expect. A browser build
+  that touches `window` or `document` then fails with errors like
+  `ReferenceError: window is not defined`.
 
 - The lookahead scans the rest of the path (`.*`) instead of just the next segment.
   Under pnpm these packages live at

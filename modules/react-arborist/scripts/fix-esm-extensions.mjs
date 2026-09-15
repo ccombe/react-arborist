@@ -271,8 +271,42 @@ if (watchMode) {
     }
   };
 
+  // One pending retry per watcher, backing off like startInner. A caller that
+  // fails while a retry is already queued doesn't start a second timer chain.
+  const createRetry = (fn) => {
+    let timer;
+    let survived;
+    let delay = 100;
+    let failing = false;
+    return {
+      schedule() {
+        failing = true;
+        clearTimeout(survived);
+        if (timer) return;
+        timer = setTimeout(() => {
+          timer = undefined;
+          fn();
+        }, delay);
+        delay = Math.min(delay * 2, maxInnerRetryDelay);
+      },
+      // True when this success ends a run of failures.
+      succeeded() {
+        clearTimeout(timer);
+        timer = undefined;
+        clearTimeout(survived);
+        survived = setTimeout(() => {
+          delay = 100;
+        }, 2000);
+        const recovered = failing;
+        failing = false;
+        return recovered;
+      },
+    };
+  };
+
   // macOS recursive watch goes inert (no error) if the root is rm -rf'd.
   // Watch the parent so a delete/recreate re-attaches and the next tsc emit is fixed.
+  const parentRetry = createRetry(() => startParent());
   const startParent = () => {
     closeWatcher(parentWatcher);
     try {
@@ -289,14 +323,16 @@ if (watchMode) {
       });
       parentWatcher.on("error", (error) => {
         console.error(`fix-esm-extensions: ${error.message}`);
-        setTimeout(() => {
-          startParent();
-          startInner();
-        }, 100);
+        parentRetry.schedule();
       });
+      // A delete/recreate may have gone unseen while this watcher was down.
+      if (parentRetry.succeeded()) {
+        startInner();
+        scheduleRun();
+      }
     } catch (error) {
       console.error(`fix-esm-extensions: ${error.message}`);
-      setTimeout(startParent, 100);
+      parentRetry.schedule();
     }
   };
 
@@ -305,6 +341,7 @@ if (watchMode) {
   // directory itself, so no event ever fires there. Watch one level higher
   // too, so `rm -rf dist` recovers the same way `rm -rf dist/module` already
   // does.
+  const grandparentRetry = createRetry(() => startGrandparent());
   const startGrandparent = () => {
     closeWatcher(grandparentWatcher);
     try {
@@ -322,15 +359,16 @@ if (watchMode) {
       });
       grandparentWatcher.on("error", (error) => {
         console.error(`fix-esm-extensions: ${error.message}`);
-        setTimeout(() => {
-          startGrandparent();
-          startParent();
-          startInner();
-        }, 100);
+        grandparentRetry.schedule();
       });
+      if (grandparentRetry.succeeded()) {
+        startParent();
+        startInner();
+        scheduleRun();
+      }
     } catch (error) {
       console.error(`fix-esm-extensions: ${error.message}`);
-      setTimeout(startGrandparent, 100);
+      grandparentRetry.schedule();
     }
   };
 
