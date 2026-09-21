@@ -230,49 +230,11 @@ if (watchMode) {
   let stopInner = () => {};
   let parentWatcher;
   let grandparentWatcher;
-  let innerRetryDelay = 100;
   const maxInnerRetryDelay = 5000;
 
-  const startInner = () => {
-    stopInner();
-    try {
-      ensureWatchRoot();
-      const watcher = watch(distModule, { recursive: true }, onChange);
-      // Only count this attempt as recovered once it has stayed up a beat —
-      // resetting on construction meant a watcher that errors right after
-      // being built never actually backed off (retry was always 100ms).
-      const survived = setTimeout(() => {
-        innerRetryDelay = 100;
-      }, 2000);
-      watcher.on("error", (error) => {
-        clearTimeout(survived);
-        console.error(`fix-esm-extensions: ${error.message}`);
-        setTimeout(startInner, innerRetryDelay);
-        innerRetryDelay = Math.min(innerRetryDelay * 2, maxInnerRetryDelay);
-      });
-      stopInner = () => {
-        clearTimeout(survived);
-        closeWatcher(watcher);
-      };
-    } catch (error) {
-      if (!isRecursiveWatchUnsupported(error)) {
-        // Called from fs.watch event callbacks below; rethrowing here would be
-        // an uncaught exception that kills watch:esm-extensions while
-        // npm-run-all keeps watch:tsc emitting, the exact silent-bad-output
-        // case the error listeners exist to prevent. Retry instead of leaving
-        // the watcher permanently dead.
-        console.error(`fix-esm-extensions: ${error.message}`);
-        setTimeout(startInner, innerRetryDelay);
-        innerRetryDelay = Math.min(innerRetryDelay * 2, maxInnerRetryDelay);
-        return;
-      }
-      console.warn("fix-esm-extensions: recursive watch unavailable; watching nested directories");
-      stopInner = watchNestedDirs(distModule, onChange, scheduleRun);
-    }
-  };
-
-  // One pending retry per watcher, backing off like startInner. A caller that
-  // fails while a retry is already queued doesn't start a second timer chain.
+  // One pending retry per watcher, backing off like startInner used to.
+  // A caller that fails while a retry is already queued doesn't start a
+  // second timer chain.
   const createRetry = (fn) => {
     let timer;
     let survived;
@@ -302,6 +264,36 @@ if (watchMode) {
         return recovered;
       },
     };
+  };
+
+  const innerRetry = createRetry(() => startInner());
+  const startInner = () => {
+    stopInner();
+    try {
+      ensureWatchRoot();
+      const watcher = watch(distModule, { recursive: true }, onChange);
+      watcher.on("error", (error) => {
+        console.error(`fix-esm-extensions: ${error.message}`);
+        innerRetry.schedule();
+      });
+      stopInner = () => closeWatcher(watcher);
+      // Emits that landed while the watcher was down never fired onChange.
+      if (innerRetry.succeeded()) scheduleRun();
+    } catch (error) {
+      if (!isRecursiveWatchUnsupported(error)) {
+        // Called from fs.watch event callbacks below; rethrowing here would be
+        // an uncaught exception that kills watch:esm-extensions while
+        // npm-run-all keeps watch:tsc emitting, the exact silent-bad-output
+        // case the error listeners exist to prevent. Retry instead of leaving
+        // the watcher permanently dead.
+        console.error(`fix-esm-extensions: ${error.message}`);
+        innerRetry.schedule();
+        return;
+      }
+      console.warn("fix-esm-extensions: recursive watch unavailable; watching nested directories");
+      stopInner = watchNestedDirs(distModule, onChange, scheduleRun);
+      innerRetry.succeeded();
+    }
   };
 
   // macOS recursive watch goes inert (no error) if the root is rm -rf'd.
