@@ -29,6 +29,7 @@
 import { render, screen } from "@testing-library/react";
 import { DndProvider, useDragDropManager } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import { getDndProviderProps } from "../components/get-dnd-provider-props";
 import { Tree } from "../components/tree";
 import { TreeProps } from "../types/tree-props";
 
@@ -120,6 +121,36 @@ test("accepts a custom dndBackend and still renders tree nodes", () => {
     </Tree>,
   );
   expect(screen.getByText("Root")).not.toBeNull();
+});
+
+/*
+ * The render test above passes even if `dndBackend` is ignored entirely,
+ * since react-dnd v16 resolves every default-context <Tree> to the same
+ * global manager regardless of which backend was requested. These assert
+ * directly on the prop-resolution function so a dropped `dndBackend`
+ * actually fails a test.
+ */
+test("forwards a custom dndBackend to DndProvider", () => {
+  expect(
+    getDndProviderProps({ data, dndBackend: StubBackend } as TreeProps<Datum>, undefined),
+  ).toEqual({ backend: StubBackend, options: { rootElement: undefined } });
+});
+
+test("falls back to HTML5Backend when no dndBackend is given", () => {
+  expect(getDndProviderProps({ data } as TreeProps<Datum>, undefined)).toEqual({
+    backend: HTML5Backend,
+    options: { rootElement: undefined },
+  });
+});
+
+test("dndManager takes precedence over dndBackend", () => {
+  const manager = {} as NonNullable<TreeProps<Datum>["dndManager"]>;
+  expect(
+    getDndProviderProps(
+      { data, dndManager: manager, dndBackend: StubBackend } as TreeProps<Datum>,
+      undefined,
+    ),
+  ).toEqual({ manager });
 });
 
 /* ------------------------------------------------------------------ */

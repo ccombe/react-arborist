@@ -504,6 +504,13 @@ installed as a peer: the drag preview calls into it (`getEmptyImage()`) on every
 drag regardless of which backend is active, so it's a hard requirement rather
 than an optional default.
 
+`dndBackend` is only dependable when this `<Tree>` is the only react-dnd
+consumer in the page: as the previous section explains, react-dnd v16
+memoizes one manager per context, so if another `<Tree>` or any other
+react-dnd consumer initialised the global manager first, this backend is
+silently dropped with no warning. Reach for the shared `<DndProvider>` +
+`dndManager` pattern above whenever the page has more than one.
+
 ### react-dnd v16 and Jest
 
 react-dnd v16 and its transitive dependencies (`dnd-core`, `@react-dnd/*`) ship
