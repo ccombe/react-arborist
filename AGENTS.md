@@ -12,7 +12,7 @@ The library wraps `react-window` for virtualization, `react-dnd` (HTML5 backend 
 
 Yarn 4 workspaces monorepo. Top-level scripts in the root `package.json` delegate into modules.
 
-- `modules/react-arborist/` — the published library. Source in `src/`, built to `dist/main` (CJS) and `dist/module` (ESM) via `tsc`. Unit tests are Jest.
+- `modules/react-arborist/` — the published library. Source in `src/`, built to `dist/module` (ESM only; `require` loads it via Node's `require(esm)`) via `tsc`. Unit tests are Jest.
 - `modules/showcase/` — Next.js demo site used for manual testing and the public demo. Depends on `react-arborist` as `workspace:*`, but Next bundles its **built `dist/`**, not its `src/` — see the caveat below.
 - `modules/e2e/` — Cypress end-to-end tests that drive the showcase's static export. `yarn workspace e2e test` boots `serve` against `modules/showcase/out` and runs all specs.
 - `modules/docs/` — the documentation site (Hugo + Tailwind).

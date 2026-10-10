@@ -25,25 +25,17 @@
     "dist"
   ],
   "sideEffects": false,
-  "main": "dist/main/index.js",
+  "main": "dist/module/index.js",
   "module": "dist/module/index.js",
   "types": "dist/module/index.d.ts",
   "exports": {
     ".": {
-      "require": {
-        "types": "./dist/main/index.d.ts",
-        "default": "./dist/main/index.js"
-      },
-      "import": {
-        "types": "./dist/module/index.d.ts",
-        "default": "./dist/module/index.js"
-      },
-      "default": "./dist/main/index.js"
+      "types": "./dist/module/index.d.ts",
+      "default": "./dist/module/index.js"
     },
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build:cjs": "tsc --outDir dist/main",
     "build:es": "tsc --outDir dist/module --module esnext --moduleResolution bundler && node scripts/fix-esm-extensions.mjs dist/module",
     "build": "npm-run-all clean -p 'build:**'",
     "clean": "rimraf dist",

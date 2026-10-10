@@ -425,14 +425,20 @@ The tree and your external target must share one react-dnd backend. Wrap both in
 
 react-arborist requires **React 18+** and **react-dnd v16**.
 
-react-dnd v16 is ESM-only, so `require("react-arborist")` from CommonJS needs
-`require(esm)` — unflagged from **Node.js 22.12**, which is what `engines.node`
+react-arborist ships a single ESM build, as does react-dnd v16. `import` and
+`require` both resolve to it, so an app never loads two copies of react-arborist with
+separate React contexts. `require("react-arborist")` from CommonJS relies on
+`require(esm)`, unflagged from **Node.js 22.12**, which is what `engines.node`
 declares. Only the `require` path actually needs that Node version, but `engines` is
 checked at install time: package managers that enforce it (Yarn Classic by default,
 pnpm with `engine-strict`) will refuse to install on older Node even for bundler and
-browser consumers. CommonJS consumers on `module: "node16"` or `"nodenext"` with
-`skipLibCheck: false` also need **TypeScript ≥ 5.8**, which taught `nodenext` about
-`require(esm)` of the now-ESM-only `react-dnd` types.
+browser consumers.
+
+CommonJS TypeScript projects that use Node module resolution need a `module` setting
+that understands `require(esm)`: `"nodenext"` (**TypeScript ≥ 5.8**) or `"node20"`
+(**TypeScript ≥ 5.9**). `"node16"` and `"node18"` report error TS1479 on
+`import ... from "react-arborist"`. Projects using `moduleResolution: "bundler"` or
+`"node10"` are unaffected.
 
 ### Why react-dnd is a peer dependency
 
@@ -513,9 +519,10 @@ silently dropped with no warning. Reach for the shared `<DndProvider>` +
 
 ### react-dnd v16 and Jest
 
-react-dnd v16 and its transitive dependencies (`dnd-core`, `@react-dnd/*`) ship
-**ESM-only** builds. Jest's default CJS runtime can't load them directly. Add a
-`transformIgnorePatterns` entry so ts-jest (or babel-jest) transpiles them to CJS.
+react-arborist, react-dnd v16, and react-dnd's transitive dependencies (`dnd-core`,
+`@react-dnd/*`) ship **ESM-only** builds. Jest's default CJS runtime can't load them
+directly. Add a `transformIgnorePatterns` entry so ts-jest (or babel-jest) transpiles
+them to CJS.
 Transpile-only mode is required — ts-jest's type-checking path won't emit for files
 outside your TS program. Set `isolatedModules: true` in the transformer's `tsconfig`
 block. Jest stopped bundling `jest-environment-jsdom` in v28, so install it too:
@@ -531,7 +538,7 @@ module.exports = {
     "^.+\\.[jt]sx?$": ["ts-jest", { tsconfig: { allowJs: true, isolatedModules: true } }],
   },
   transformIgnorePatterns: [
-    "/node_modules/(?!.*(react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd)/)",
+    "/node_modules/(?!.*(react-arborist|react-dnd|react-dnd-html5-backend|dnd-core|@react-dnd)/)",
   ],
   testEnvironment: "jsdom",
   testEnvironmentOptions: {
