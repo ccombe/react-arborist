@@ -15,4 +15,7 @@ install time, so installing v4 requires Node ≥ 22.12 even for bundler and brow
 consumers. CommonJS `node16`/`nodenext` type-checking additionally needs TypeScript
 ≥ 5.8. The package also declares an `exports` map: `react-arborist` and
 `react-arborist/package.json` resolve as before, but deep imports such as
-`react-arborist/dist/module/...` are no longer resolvable.
+`react-arborist/dist/module/...` are no longer resolvable. The `react` and `react-dom`
+peer floor rises from 16.14 to **18**: the ESM build now imports `react/jsx-runtime`
+and `useSyncExternalStore` directly from React, which older versions can't provide
+to ESM consumers.

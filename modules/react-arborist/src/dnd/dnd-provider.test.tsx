@@ -1,7 +1,7 @@
 /**
  * Integration tests for the three DndProvider initialisation paths inside
  * TreeProvider, and regression coverage for the react-dnd global-singleton
- * conflict (GitHub issue #319 / Sentry APP-57G).
+ * conflict (GitHub issue #319).
  *
  * Background
  * ----------

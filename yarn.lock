@@ -2071,13 +2071,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/use-sync-external-store@npm:^0.0.6":
-  version: 0.0.6
-  resolution: "@types/use-sync-external-store@npm:0.0.6"
-  checksum: a95ce330668501ad9b1c5b7f2b14872ad201e552a0e567787b8f1588b22c7040c7c3d80f142cbb9f92d13c4ea41c46af57a20f2af4edf27f224d352abcfe4049
-  languageName: node
-  linkType: hard
-
 "@types/yargs-parser@npm:*":
   version: 21.0.0
   resolution: "@types/yargs-parser@npm:21.0.0"
@@ -8706,7 +8699,6 @@ __metadata:
     "@types/react": "npm:^18.2.43"
     "@types/react-dom": "npm:^18.2.0"
     "@types/react-window": "npm:^1.8.8"
-    "@types/use-sync-external-store": "npm:^0.0.6"
     jest: "npm:^29.7.0"
     jest-environment-jsdom: "npm:^29.7.0"
     npm-run-all: "npm:^4.1.5"
@@ -8719,12 +8711,11 @@ __metadata:
     rimraf: "npm:^5.0.5"
     ts-jest: "npm:^29.4.0"
     typescript: "npm:^5.6.0"
-    use-sync-external-store: "npm:^1.2.0"
   peerDependencies:
-    react: ">= 16.14"
+    react: ">= 18"
     react-dnd: ^16
     react-dnd-html5-backend: ^16
-    react-dom: ">= 16.14"
+    react-dom: ">= 18"
   languageName: unknown
   linkType: soft
 
@@ -10721,15 +10712,6 @@ __metadata:
     react: 16.8.0 - 18
     react-dom: 16.8.0 - 18
   checksum: 821d3f783090e36c694ef0ae3e366b364a691a8254d04337700ea79757e01e2d79f307ee517487c9246db7e8bc9625b474dd6ac7dad18d777004dee817826080
-  languageName: node
-  linkType: hard
-
-"use-sync-external-store@npm:^1.2.0":
-  version: 1.2.0
-  resolution: "use-sync-external-store@npm:1.2.0"
-  peerDependencies:
-    react: ^16.8.0 || ^17.0.0 || ^18.0.0
-  checksum: a676216affc203876bd47981103f201f28c2731361bb186367e12d287a7566763213a8816910c6eb88265eccd4c230426eb783d64c373c4a180905be8820ed8e
   languageName: node
   linkType: hard
 

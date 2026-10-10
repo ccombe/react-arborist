@@ -1,5 +1,11 @@
-import { ReactNode, useEffect, useImperativeHandle, useMemo, useRef } from "react";
-import { useSyncExternalStore } from "use-sync-external-store/shim/index.js";
+import {
+  ReactNode,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 import { FixedSizeList, VariableSizeList } from "react-window";
 import { createStore, Store } from "redux";
 import { DndProvider } from "react-dnd";

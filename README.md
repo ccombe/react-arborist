@@ -423,7 +423,7 @@ The tree and your external target must share one react-dnd backend. Wrap both in
 
 ## react-dnd Compatibility
 
-react-arborist requires **react-dnd v16**.
+react-arborist requires **React 18+** and **react-dnd v16**.
 
 react-dnd v16 is ESM-only, so `require("react-arborist")` from CommonJS needs
 `require(esm)` — unflagged from **Node.js 22.12**, which is what `engines.node`
