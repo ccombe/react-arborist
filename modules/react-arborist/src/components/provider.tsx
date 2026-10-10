@@ -1,15 +1,21 @@
-import { ReactNode, useEffect, useImperativeHandle, useMemo, useRef } from "react";
-import { useSyncExternalStore } from "use-sync-external-store/shim";
+import {
+  ReactNode,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 import { FixedSizeList, VariableSizeList } from "react-window";
+import { createStore, Store } from "redux";
+import { DndProvider } from "react-dnd";
 import { DataUpdatesContext, DndContext, NodesContext, TreeApiContext } from "../context";
 import { TreeApi } from "../interfaces/tree-api";
 import { initialState } from "../state/initial";
 import { Actions, rootReducer, RootState } from "../state/root-reducer";
-import { HTML5Backend } from "react-dnd-html5-backend";
-import { DndProvider } from "react-dnd";
-import { TreeProps } from "../types/tree-props";
-import { createStore, Store } from "redux";
 import { actions as visibility } from "../state/open-slice";
+import { TreeProps } from "../types/tree-props";
+import { getDndProviderProps } from "./get-dnd-provider-props";
 
 type Props<T> = {
   treeProps: TreeProps<T>;
@@ -23,8 +29,8 @@ export function TreeProvider<T>({ treeProps, imperativeHandle, children }: Props
   const list = useRef<FixedSizeList | VariableSizeList | null>(null);
   const listEl = useRef<HTMLDivElement | null>(null);
   const store = useRef<Store<RootState, Actions>>(
-    // @ts-ignore
-    createStore(rootReducer, initialState(treeProps)),
+    // @ts-expect-error Redux 5 tightened createStore's PreloadedState generic; rootReducer is typed without it (v4-style).
+    createStore(rootReducer, initialState(treeProps)), // Migrate to configureStore to remove this.
   );
   const state = useSyncExternalStore<RootState>(
     store.current.subscribe,
@@ -71,23 +77,14 @@ export function TreeProvider<T>({ treeProps, imperativeHandle, children }: Props
     }
   }, [api.props.searchTerm]);
 
+  const dndProps = getDndProviderProps(treeProps, api.props.dndRootElement ?? undefined);
+
   return (
     <TreeApiContext.Provider value={api}>
       <DataUpdatesContext.Provider value={updateCount.current}>
         <NodesContext.Provider value={state.nodes}>
           <DndContext.Provider value={state.dnd}>
-            <DndProvider
-              {...(treeProps.dndManager
-                ? { manager: treeProps.dndManager }
-                : {
-                    backend: treeProps.dndBackend || HTML5Backend,
-                    options: {
-                      rootElement: api.props.dndRootElement || undefined,
-                    },
-                  })}
-            >
-              {children}
-            </DndProvider>
+            <DndProvider {...dndProps}>{children}</DndProvider>
           </DndContext.Provider>
         </NodesContext.Provider>
       </DataUpdatesContext.Provider>
