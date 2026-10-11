@@ -7,8 +7,6 @@ import { initialState } from "./initial.js";
 export type DragSlice = {
   id: string | null;
   selectedIds: string[];
-  destinationParentId: string | null;
-  destinationIndex: number | null;
 };
 
 /* Reducer */
@@ -21,23 +19,7 @@ export function reducer(
     case "DND_DRAG_START":
       return { ...state, id: action.id, selectedIds: action.dragIds };
     case "DND_DRAG_END":
-      return {
-        ...state,
-        id: null,
-        destinationParentId: null,
-        destinationIndex: null,
-        selectedIds: [],
-      };
-    case "DND_DESTINATION":
-      if (action.parentId !== state.destinationParentId || action.index != state.destinationIndex) {
-        return {
-          ...state,
-          destinationParentId: action.parentId,
-          destinationIndex: action.index,
-        };
-      } else {
-        return state;
-      }
+      return { ...state, id: null, selectedIds: [] };
     default:
       return state;
   }

@@ -10,8 +10,6 @@ export const initialState = (props?: TreeProps<any>): RootState => ({
     drag: {
       id: null,
       selectedIds: [],
-      destinationParentId: null,
-      destinationIndex: null,
     },
     selection: { ids: new Set(), anchor: null, mostRecent: null },
   },
@@ -21,5 +19,7 @@ export const initialState = (props?: TreeProps<any>): RootState => ({
     dragIds: [],
     parentId: null,
     index: -1,
+    destinationParentId: null,
+    destinationIndex: null,
   },
 });

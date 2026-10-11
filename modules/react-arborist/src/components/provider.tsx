@@ -58,6 +58,9 @@ export function TreeProvider<T>({ treeProps, imperativeHandle, children }: Props
     api.update(api.props);
   }, [state.nodes.open]);
 
+  /* Drop any hover still waiting for an animation frame. */
+  useEffect(() => () => api.cancelHover(), [api]);
+
   /* Expose the tree api */
   useImperativeHandle(imperativeHandle, () => api);
 
