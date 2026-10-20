@@ -5,7 +5,6 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
-  useState,
   useSyncExternalStore,
 } from "react";
 import { FixedSizeList, VariableSizeList } from "react-window";
@@ -25,14 +24,8 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { getEventCoordinates } from "@dnd-kit/utilities";
-import {
-  DataUpdatesContext,
-  DndContext,
-  DragPreviewContext,
-  DragPreviewState,
-  NodesContext,
-  TreeApiContext,
-} from "../context.js";
+import { DataUpdatesContext, DndContext, NodesContext, TreeApiContext } from "../context.js";
+
 import { TreeApi } from "../interfaces/tree-api.js";
 import { initialState } from "../state/initial.js";
 import { Actions, rootReducer, RootState } from "../state/root-reducer.js";
@@ -58,13 +51,6 @@ const POINTER_SENSOR_OPTIONS = {
 };
 const KEYBOARD_SENSOR_OPTIONS = {};
 
-const INITIAL_DRAG_PREVIEW_STATE: DragPreviewState = {
-  offset: null,
-  mouse: null,
-  id: null,
-  dragIds: [],
-  isDragging: false,
-};
 
 function useHasParentDndContext(): boolean {
   const ctx = useDndKitContext();
@@ -148,10 +134,6 @@ export function TreeProvider<T>({ treeProps, imperativeHandle, children }: Props
     () => SERVER_STATE,
   );
 
-  const [dragPreviewState, setDragPreviewState] = useState<DragPreviewState>(
-    INITIAL_DRAG_PREVIEW_STATE,
-  );
-
   /* The tree api object is stable. */
   const api = useMemo(() => {
     return new TreeApi<T>(store.current, treeProps, list, listEl);
@@ -199,18 +181,6 @@ export function TreeProvider<T>({ treeProps, imperativeHandle, children }: Props
       const id = String(event.active.id);
       const dragIds = api.isSelected(id) ? Array.from(api.selectedIds) : [id];
       store.current.dispatch(dndActions.dragStart(id, dragIds));
-
-      const initialCoords = event.activatorEvent ? getEventCoordinates(event.activatorEvent) : null;
-      const initialRect = event.active.rect.current.initial;
-      const offset = initialRect ? { x: initialRect.left, y: initialRect.top } : initialCoords;
-
-      setDragPreviewState({
-        offset,
-        mouse: initialCoords,
-        id,
-        dragIds,
-        isDragging: true,
-      });
     },
     [api],
   );
@@ -269,26 +239,11 @@ export function TreeProvider<T>({ treeProps, imperativeHandle, children }: Props
 
   const handleDragMove = useCallback(
     (event: DragMoveEvent) => {
-      const initialCoords = event.activatorEvent ? getEventCoordinates(event.activatorEvent) : null;
-      const delta = event.delta;
-      const mouse = initialCoords
-        ? { x: initialCoords.x + delta.x, y: initialCoords.y + delta.y }
-        : null;
-      const initialRect = event.active.rect.current.initial;
-      const offset = initialRect
-        ? { x: initialRect.left + delta.x, y: initialRect.top + delta.y }
-        : mouse;
-
-      setDragPreviewState((prev) => ({
-        ...prev,
-        offset,
-        mouse,
-      }));
-
       updateHover(event.over, event.activatorEvent, event.delta);
     },
     [updateHover],
   );
+
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -302,7 +257,6 @@ export function TreeProvider<T>({ treeProps, imperativeHandle, children }: Props
       api.hideCursor();
       api.redrawList();
       store.current.dispatch(dndActions.dragEnd());
-      setDragPreviewState(INITIAL_DRAG_PREVIEW_STATE);
     },
     [api, updateHover],
   );
@@ -313,7 +267,6 @@ export function TreeProvider<T>({ treeProps, imperativeHandle, children }: Props
       api.hideCursor();
       api.redrawList();
       store.current.dispatch(dndActions.dragEnd());
-      setDragPreviewState(INITIAL_DRAG_PREVIEW_STATE);
     },
     [api],
   );
@@ -345,11 +298,7 @@ export function TreeProvider<T>({ treeProps, imperativeHandle, children }: Props
     <TreeApiContext.Provider value={api}>
       <DataUpdatesContext.Provider value={updateCount.current}>
         <NodesContext.Provider value={state.nodes}>
-          <DndContext.Provider value={state.dnd}>
-            <DragPreviewContext.Provider value={dragPreviewState}>
-              {dndContent}
-            </DragPreviewContext.Provider>
-          </DndContext.Provider>
+          <DndContext.Provider value={state.dnd}>{dndContent}</DndContext.Provider>
         </NodesContext.Provider>
       </DataUpdatesContext.Provider>
     </TreeApiContext.Provider>

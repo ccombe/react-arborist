@@ -53,7 +53,7 @@ describe("DndProvider / DndContext integration", () => {
     expect(screen.getByText("Root")).not.toBeNull();
   });
 
-  test("starts dragging when dragHandle moves beyond distance threshold", () => {
+  test("starts dragging when dragHandle moves beyond distance threshold", async () => {
     const handleMove = jest.fn();
     render(
       <Tree<Datum> data={data} rowHeight={24} onMove={handleMove}>
@@ -67,7 +67,7 @@ describe("DndProvider / DndContext integration", () => {
     // In jsdom without PointerEvent, MouseSensor is used
     fireEvent.mouseDown(rootEl, { clientX: 10, clientY: 10, button: 0 });
     // Moving beyond distance threshold of 5px activates the drag
-    act(() => {
+    await act(async () => {
       fireEvent.mouseMove(document, { clientX: 10, clientY: 30 });
     });
 
@@ -75,7 +75,7 @@ describe("DndProvider / DndContext integration", () => {
     expect(screen.getAllByText("Root")).toHaveLength(2);
 
     // Release drag
-    act(() => {
+    await act(async () => {
       fireEvent.mouseUp(document, { clientX: 10, clientY: 30 });
     });
 
@@ -83,7 +83,7 @@ describe("DndProvider / DndContext integration", () => {
     expect(screen.getAllByText("Root")).toHaveLength(1);
   });
 
-  test("triggers onMove when dragging and dropping a node onto another node", () => {
+  test("triggers onMove when dragging and dropping a node onto another node", async () => {
     const handleMove = jest.fn();
     render(
       <Tree<Datum> data={data} rowHeight={24} onMove={handleMove}>
@@ -113,13 +113,13 @@ describe("DndProvider / DndContext integration", () => {
 
     // Start drag on Child A
     fireEvent.mouseDown(childA, { clientX: 10, clientY: 30, button: 0 });
-    act(() => {
+    await act(async () => {
       // Move up into Root row
       fireEvent.mouseMove(document, { clientX: 10, clientY: 12 });
     });
 
     // Drop onto Root
-    act(() => {
+    await act(async () => {
       fireEvent.mouseUp(document, { clientX: 10, clientY: 12 });
     });
 
@@ -131,7 +131,7 @@ describe("DndProvider / DndContext integration", () => {
     );
   });
 
-  test("participates in an external @dnd-kit DndContext without nesting errors", () => {
+  test("participates in an external @dnd-kit DndContext without nesting errors", async () => {
     const handleDragStart = jest.fn();
     render(
       <DndKitContext sensors={getDefaultSensors()} onDragStart={handleDragStart}>
@@ -145,13 +145,13 @@ describe("DndProvider / DndContext integration", () => {
     expect(rootEl).not.toBeNull();
 
     fireEvent.mouseDown(rootEl, { clientX: 10, clientY: 10, button: 0 });
-    act(() => {
+    await act(async () => {
       fireEvent.mouseMove(document, { clientX: 10, clientY: 30 });
     });
 
     expect(handleDragStart).toHaveBeenCalledTimes(1);
 
-    act(() => {
+    await act(async () => {
       fireEvent.mouseUp(document, { clientX: 10, clientY: 30 });
     });
   });
