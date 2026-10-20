@@ -4,6 +4,8 @@ import { useDragHook } from "../dnd/drag-hook.js";
 import { useDropHook } from "../dnd/drop-hook.js";
 import { useDestinationUpdates } from "../hooks/use-destination-updates.js";
 import { useFreshNode } from "../hooks/use-fresh-node.js";
+import { DefaultNode } from "./default-node.js";
+import { DefaultRow } from "./default-row.js";
 
 type Props = {
   style: React.CSSProperties;
@@ -75,8 +77,8 @@ export const RowContainer = React.memo(function RowContainer<T>({ index, style }
     }
   }, [node.isEditing, node.isFocused, el.current]);
 
-  const Node = tree.renderNode;
-  const Row = tree.renderRow;
+  const Node = tree.props.children || DefaultNode;
+  const Row = tree.props.renderRow || DefaultRow;
 
   return (
     <Row node={node} innerRef={innerRef} attrs={rowAttrs}>

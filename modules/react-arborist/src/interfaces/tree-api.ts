@@ -4,9 +4,6 @@ import { TreeProps } from "../types/tree-props.js";
 import { MutableRefObject } from "react";
 import { Align, FixedSizeList, ListOnItemsRenderedProps, VariableSizeList } from "react-window";
 import * as utils from "../utils.js";
-import { DefaultCursor } from "../components/default-cursor.js";
-import { DefaultRow } from "../components/default-row.js";
-import { DefaultNode } from "../components/default-node.js";
 import { NodeApi } from "./node-api.js";
 import { edit } from "../state/edit-slice.js";
 import { Actions, RootState } from "../state/root-reducer.js";
@@ -15,9 +12,7 @@ import { createRoot, ROOT_ID } from "../data/create-root.js";
 import { actions as visibility } from "../state/open-slice.js";
 import { actions as selection } from "../state/selection-slice.js";
 import { actions as dnd } from "../state/dnd-slice.js";
-import { DefaultDragPreview } from "../components/default-drag-preview.js";
-import { DefaultContainer } from "../components/default-container.js";
-import { Cursor } from "../dnd/compute-drop.js";
+import type { Cursor } from "../dnd/compute-drop.js";
 import type { DropResult } from "../dnd/drop-hook.js";
 import { createAnimationFrameThrottle } from "../dnd/animation-frame-throttle.js";
 import { Store } from "redux";
@@ -920,22 +915,22 @@ export class TreeApi<T> {
   /* Get Renderers */
 
   get renderContainer() {
-    return this.props.renderContainer || DefaultContainer;
+    return this.props.renderContainer;
   }
 
   get renderRow() {
-    return this.props.renderRow || DefaultRow;
+    return this.props.renderRow;
   }
 
   get renderNode() {
-    return this.props.children || DefaultNode;
+    return this.props.children;
   }
 
   get renderDragPreview() {
-    return this.props.renderDragPreview || DefaultDragPreview;
+    return this.props.renderDragPreview;
   }
 
   get renderCursor() {
-    return this.props.renderCursor || DefaultCursor;
+    return this.props.renderCursor;
   }
 }

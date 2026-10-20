@@ -1,6 +1,6 @@
 import { RefObject } from "react";
 import { useDroppable } from "@dnd-kit/core";
-import { NodeApi } from "../interfaces/node-api.js";
+import type { NodeApi } from "../interfaces/node-api.js";
 
 export type DropResult = {
   parentId: string | null;

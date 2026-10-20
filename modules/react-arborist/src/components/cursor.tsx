@@ -1,4 +1,5 @@
 import { useDndContext, useTreeApi } from "../context.js";
+import { DefaultCursor } from "./default-cursor.js";
 
 export function Cursor() {
   const tree = useTreeApi();
@@ -9,6 +10,6 @@ export function Cursor() {
   const top =
     tree.rowTopPosition(cursor.index) + (tree.props.padding ?? tree.props.paddingTop ?? 0);
   const left = indent * cursor.level;
-  const Cursor = tree.renderCursor;
+  const Cursor = tree.props.renderCursor || DefaultCursor;
   return <Cursor {...{ top, left, indent }} />;
 }

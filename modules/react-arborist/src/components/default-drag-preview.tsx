@@ -1,6 +1,7 @@
 import React, { memo } from "react";
 import { useTreeApi } from "../context.js";
 import { DragPreviewProps } from "../types/renderers.js";
+import { DefaultNode } from "./default-node.js";
 
 export function DefaultDragPreview({ id, dragIds }: DragPreviewProps) {
   return (
@@ -34,8 +35,9 @@ const PreviewNode = memo(function PreviewNode<T>(props: { id: string | null; dra
   const tree = useTreeApi<T>();
   const node = tree.get(props.id);
   if (!node) return null;
+  const NodeRenderer = tree.props.children || DefaultNode;
   return (
-    <tree.renderNode
+    <NodeRenderer
       preview
       node={node}
       style={{
